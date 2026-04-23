@@ -25,7 +25,7 @@ async function apiFetch<T>(path: string): Promise<T | null> {
 async function fsListRuns(): Promise<string[]> {
   const fs = await import("fs/promises");
   const path = await import("path");
-  const dir = path.resolve(process.cwd(), "..", "test-results");
+  const dir = path.resolve(process.cwd(), "..", "hackthon-hackers", "test-results");
   try {
     const stat = await fs.stat(dir);
     if (!stat.isDirectory()) return [];
@@ -43,7 +43,7 @@ async function fsListRuns(): Promise<string[]> {
 async function fsListSitesForRun(runId: string): Promise<string[]> {
   const fs = await import("fs/promises");
   const pathMod = await import("path");
-  const dir = pathMod.resolve(process.cwd(), "..", "test-results", runId);
+  const dir = pathMod.resolve(process.cwd(), "..", "hackthon-hackers", "test-results", runId);
   try {
     const stat = await fs.stat(dir);
     if (!stat.isDirectory()) return [];
@@ -83,7 +83,7 @@ async function fsReadJson<T>(filePath: string): Promise<T | null> {
 
 async function fsGetForSite(runId: string, site: string, file: string): Promise<TestResult[]> {
   const pathMod = await import("path");
-  const filePath = pathMod.resolve(process.cwd(), "..", "test-results", runId, site, file);
+  const filePath = pathMod.resolve(process.cwd(), "..", "hackthon-hackers", "test-results", runId, site, file);
   return (await fsReadJson<TestResult[]>(filePath)) ?? [];
 }
 

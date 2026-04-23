@@ -39,7 +39,9 @@ export default async function FailedPage({
   }
 
   const withScreenshots = allFailed.filter(
-    (r) => r.screenshotPaths?.length
+    (r) =>
+      r.screenshotPaths?.length ||
+      r.attachments?.some((u) => /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(u))
   ).length;
   const withCurl = allFailed.filter((r) => r.retryCurl).length;
 

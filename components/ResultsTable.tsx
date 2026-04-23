@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
 import type { TestResult } from "@/lib/types";
 
@@ -291,18 +291,10 @@ function RowGroup({
                   </pre>
                 </div>
               )}
-              {r.screenshotPaths?.length ? (
-                <div>
-                  <span className="font-semibold text-slate-700">Screenshots:</span>
-                  <ul className="mt-1 space-y-1">
-                    {r.screenshotPaths.map((p, i) => (
-                      <li key={i} className="text-xs text-slate-500 font-mono break-all">
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+              <ScreenshotGallery
+                screenshotPaths={r.screenshotPaths}
+                attachments={r.attachments}
+              />
               {(showCurl || r.outcome === "failed") && r.retryCurl && (
                 <div>
                   <span className="font-semibold text-slate-700">Retry cURL:</span>
@@ -328,6 +320,132 @@ function Detail({ label, value }: { label: string; value: string }) {
     <div className="flex gap-2">
       <span className="font-semibold text-slate-600 shrink-0">{label}:</span>
       <span className="text-slate-700 break-all">{value}</span>
+    </div>
+  );
+}
+
+function toDisplayUrl(raw: string): string {
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `/api/screenshots?path=${encodeURIComponent(raw)}`;
+}
+
+function collectImageUrls(
+  attachments?: string[],
+  screenshotPaths?: string[],
+): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+
+  for (const list of [attachments, screenshotPaths]) {
+    for (const raw of list ?? []) {
+      if (!raw) continue;
+      const isImage = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(raw);
+      if (!isImage) continue;
+      const url = toDisplayUrl(raw);
+      if (!seen.has(url)) {
+        seen.add(url);
+        urls.push(url);
+      }
+    }
+  }
+  return urls;
+}
+
+function ScreenshotGallery({
+  screenshotPaths,
+  attachments,
+}: {
+  screenshotPaths?: string[];
+  attachments?: string[];
+}) {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const imageUrls = collectImageUrls(attachments, screenshotPaths);
+
+  if (!imageUrls.length) return null;
+
+  return (
+    <>
+      <div>
+        <span className="font-semibold text-slate-700">
+          Screenshots ({imageUrls.length}):
+        </span>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {imageUrls.map((url, i) => (
+            <button
+              key={i}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxUrl(url);
+              }}
+              className="group/img relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt={`Screenshot ${i + 1}`}
+                width={220}
+                height={140}
+                className="object-cover w-[220px] h-[140px]"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/img:bg-black/20 transition-colors">
+                <span className="rounded-full bg-white/90 px-2 py-1 text-xs font-medium text-slate-700 opacity-0 group-hover/img:opacity-100 transition-opacity shadow">
+                  View full
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {lightboxUrl && (
+        <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
+    </>
+  );
+}
+
+function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  const handleBackdrop = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) onClose();
+    },
+    [onClose]
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={handleBackdrop}
+    >
+      <div className="relative max-h-[90vh] max-w-[90vw]">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-600 shadow-lg hover:bg-slate-100 transition-colors"
+        >
+          &#10005;
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="Screenshot full view"
+          className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain shadow-2xl"
+        />
+        <div className="mt-2 flex justify-center">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-md bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-700 shadow hover:bg-white transition-colors"
+          >
+            Open in new tab &rarr;
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
